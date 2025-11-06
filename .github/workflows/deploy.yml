@@ -15,22 +15,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-test-deploy:
-    runs-on: ubuntu-latest
+  test-lint-build-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
+      # 1. Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js (Latest LTS)
+      # 2. Setup Node.js (latest LTS)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+          cache: 'npm'
 
-      - name: Cache node_modules
+      # 3. Cache node_modules
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -38,72 +42,78 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
+      # 4. Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # 5. Run Jest tests and check coverage ≥ 80%
       - name: Run Jest tests with coverage
         run: npm run test -- --coverage --watchAll=false
 
-      - name: Check test coverage requirements
+      - name: Check Jest coverage threshold
         run: |
-          echo "Checking Jest test coverage..."
-          
           # Check if coverage-summary.json exists
-          if [ ! -f "./coverage/coverage-summary.json" ]; then
-            echo "❌ Error: coverage-summary.json not found!"
-            echo "Make sure Jest is configured to generate coverage reports."
+          if [ ! -f "coverage/coverage-summary.json" ]; then
+            echo "❌ Coverage summary not found!"
             exit 1
           fi
           
-          # Parse coverage percentage from coverage-summary.json
-          COVERAGE=$(node -e "
-            const coverage = require('./coverage/coverage-summary.json');
-            const totalCoverage = coverage.total;
-            console.log(totalCoverage.lines.pct);
+          # Extract total coverage percentage
+          COVERAGE=$(node -p "
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            Math.round(coverage.total.lines.pct);
           ")
           
-          echo "Total test coverage: ${COVERAGE}%"
+          echo "📊 Total test coverage: ${COVERAGE}%"
           
-          # Check if coverage meets minimum requirement (80%)
-          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
-            echo "✅ Coverage requirement met: ${COVERAGE}% >= 80%"
-          else
-            echo "❌ Coverage requirement failed: ${COVERAGE}% < 80%"
-            echo "Please add more tests to reach at least 80% coverage."
+          # Check if coverage meets minimum threshold
+          if [ $COVERAGE -lt 80 ]; then
+            echo "❌ Coverage ${COVERAGE}% is below required 80% threshold!"
+            echo "🔥 Build failed due to insufficient test coverage"
             exit 1
+          else
+            echo "✅ Coverage ${COVERAGE}% meets the 80% threshold requirement"
           fi
 
+      # 6. Run ESLint validation (stop if any lint errors)
       - name: Run ESLint validation
         run: |
-          echo "Running ESLint validation..."
+          echo "🔍 Running ESLint validation..."
           npm run lint
-          if [ $? -eq 0 ]; then
-            echo "✅ ESLint validation passed - no rule violations found"
-          else
-            echo "❌ ESLint validation failed - fix lint errors before deployment"
-            exit 1
-          fi
+          echo "✅ ESLint validation passed - no rule violations found"
 
+      # 7. Build Angular project
       - name: Build Angular project
-        run: npm run build -- --base-href '/testingCoverageCheckBeforeDeploy9/'
+        run: |
+          echo "🏗️ Building Angular project..."
+          npm run build -- --base-href '/testingCoverageCheckBeforeDeploy9/'
+          echo "✅ Angular build completed successfully"
 
-      - name: Copy index.html to 404.html (SPA routing fix)
-        run: cp dist/testing-coverage-check-before-deploy9/index.html dist/testing-coverage-check-before-deploy9/404.html
+      # 8. Copy index.html to 404.html (fix SPA routing for Angular)
+      - name: Copy index.html to 404.html for SPA routing
+        run: |
+          cp dist/testing-coverage-check-before-deploy9/index.html dist/testing-coverage-check-before-deploy9/404.html
+          echo "✅ Created 404.html for SPA routing support"
 
-      - name: Configure GitHub Pages
+      # 9. Configure GitHub Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact for GitHub Pages
+      # 10. Upload artifact (build output)
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dist/testing-coverage-check-before-deploy9'
+          path: './dist/testing-coverage-check-before-deploy9'
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+      # 11. Deploy using actions/deploy-pages@v4
+      - id: deployment
+        name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
 
-      - name: Print deployed URL
+      # Print the deployed GitHub Pages URL
+      - name: Display deployment URL
         run: |
-          echo "🚀 Successfully deployed to GitHub Pages!"
-          echo "📄 Your Angular app is now live at: ${{ steps.deployment.outputs.page_url }}"
-          echo "🔗 Direct URL: https://aishwaryakulkarni1801.github.io/testingCoverageCheckBeforeDeploy9/"
+          echo "🚀 Deployment completed successfully!"
+          echo "� Your Angular app is now live at: ${{ steps.deployment.outputs.page_url }}"
+          echo "🎉 Visit your deployed application: ${{ steps.deployment.outputs.page_url }}"
