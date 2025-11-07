@@ -1,0 +1,155 @@
+{
+  "root": true,
+  "ignorePatterns": [
+    "projects/**/*"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "*.ts"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "project": ["tsconfig.json"]
+      },
+      "env": {
+        "browser": true,
+        "es2020": true,
+        "node": true
+      },
+      "plugins": [
+        "@typescript-eslint",
+        "@angular-eslint"
+      ],
+      "rules": {
+        // Angular specific rules
+        "@angular-eslint/directive-selector": [
+          "error",
+          {
+            "type": "attribute",
+            "prefix": "app",
+            "style": "camelCase"
+          }
+        ],
+        "@angular-eslint/component-selector": [
+          "error",
+          {
+            "type": "element",
+            "prefix": "app",
+            "style": "kebab-case"
+          }
+        ],
+        "@angular-eslint/use-lifecycle-interface": "error",
+        "@angular-eslint/use-pipe-transform-interface": "error",
+        "@angular-eslint/no-output-native": "error",
+        "@angular-eslint/no-output-on-prefix": "error",
+        "@angular-eslint/no-input-rename": "error",
+        "@angular-eslint/no-output-rename": "error",
+        "@angular-eslint/no-inputs-metadata-property": "error",
+        "@angular-eslint/no-outputs-metadata-property": "error",
+        "@angular-eslint/no-queries-metadata-property": "error",
+        "@angular-eslint/prefer-on-push-component-change-detection": "warn",
+        
+        // TypeScript rules
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/no-var-requires": "error",
+        "@typescript-eslint/no-inferrable-types": "warn",
+        "@typescript-eslint/no-empty-function": "warn",
+        "@typescript-eslint/no-unused-expressions": "error",
+        
+        // Console and debugging rules
+        "no-console": "error", // Changed from "warn" to "error" to enforce removal
+        "no-debugger": "error",
+        "no-alert": "error",
+        "no-eval": "error",
+        "no-implied-eval": "error",
+        
+        // Code quality rules
+        "prefer-const": "error",
+        "no-var": "error",
+        "no-unused-vars": "off", // Using TypeScript version instead
+        "no-undef": "error",
+        "no-unreachable": "error",
+        "no-duplicate-imports": "error",
+        "no-self-compare": "error",
+        "no-unneeded-ternary": "error",
+        "no-useless-return": "error",
+        "no-useless-concat": "error",
+        "no-useless-escape": "error",
+        "no-lonely-if": "error",
+        "no-else-return": "error",
+        "prefer-template": "error",
+        "prefer-arrow-callback": "error",
+        
+        // Style and formatting rules
+        "quotes": ["error", "single"],
+        "semi": ["error", "always"],
+        "comma-dangle": ["error", "always-multiline"],
+        "object-curly-spacing": ["error", "always"],
+        "array-bracket-spacing": ["error", "never"],
+        "indent": ["error", 2, { "SwitchCase": 1 }],
+        "max-len": ["error", { "code": 120, "ignoreUrls": true }],
+        "no-trailing-spaces": "error",
+        "eol-last": "error",
+        "comma-spacing": ["error", { "before": false, "after": true }],
+        "key-spacing": ["error", { "beforeColon": false, "afterColon": true }],
+        "space-before-blocks": "error",
+        "space-in-parens": ["error", "never"],
+        "space-infix-ops": "error",
+        "keyword-spacing": ["error", { "before": true, "after": true }],
+        
+        // Best practices
+        "curly": "error",
+        "eqeqeq": ["error", "always"],
+        "no-magic-numbers": ["warn", { "ignore": [0, 1, -1], "ignoreArrayIndexes": true }],
+        "no-throw-literal": "error",
+        "no-return-await": "error",
+        "require-await": "error",
+        "no-async-promise-executor": "error",
+        "prefer-promise-reject-errors": "error"
+      }
+    },
+    {
+      "files": [
+        "*.html"
+      ],
+      "parser": "@angular-eslint/template-parser",
+      "plugins": [
+        "@angular-eslint/template"
+      ],
+      "rules": {
+        // Template syntax and best practices
+        "@angular-eslint/template/banana-in-box": "error",
+        "@angular-eslint/template/no-negated-async": "error",
+        "@angular-eslint/template/alt-text": "error",
+        "@angular-eslint/template/click-events-have-key-events": "warn",
+        "@angular-eslint/template/mouse-events-have-key-events": "warn",
+        "@angular-eslint/template/no-call-expression": "warn",
+        "@angular-eslint/template/no-any": "warn",
+        "@angular-eslint/template/no-duplicate-attributes": "error",
+        "@angular-eslint/template/use-track-by-function": "warn",
+        "@angular-eslint/template/conditional-complexity": ["error", { "maxComplexity": 3 }],
+        "@angular-eslint/template/cyclomatic-complexity": ["error", { "maxComplexity": 5 }]
+      }
+    },
+    {
+      "files": [
+        "*.spec.ts"
+      ],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        // Relaxed rules for test files
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-empty-function": "off",
+        "no-console": "off",
+        "no-magic-numbers": "off",
+        "@angular-eslint/prefer-on-push-component-change-detection": "off",
+        "prefer-const": "warn", // Relaxed for test setup
+        "max-len": ["error", { "code": 150 }] // Longer lines allowed in tests
+      }
+    }
+  ]
+}
