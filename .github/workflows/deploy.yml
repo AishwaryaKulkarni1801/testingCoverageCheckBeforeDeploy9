@@ -1,0 +1,144 @@
+name: Deploy Angular App to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run Jest tests with coverage validation
+        run: |
+          npm run test -- --coverage --watchAll=false
+          
+          # Check if coverage summary exists
+          if [ ! -f "coverage/coverage-summary.json" ]; then
+            echo "❌ Coverage summary not found!"
+            exit 1
+          fi
+          
+          # Extract total coverage percentage
+          COVERAGE=$(node -e "
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const total = coverage.total;
+            const lines = total.lines.pct;
+            const statements = total.statements.pct;
+            const functions = total.functions.pct;
+            const branches = total.branches.pct;
+            const average = (lines + statements + functions + branches) / 4;
+            console.log(Math.round(average * 100) / 100);
+          ")
+          
+          echo "📊 Total Coverage: ${COVERAGE}%"
+          
+          # Check if coverage meets minimum requirement (80%)
+          if (( $(echo "${COVERAGE} < 80" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below the required 80% threshold!"
+            echo "Please improve test coverage before deployment."
+            exit 1
+          fi
+          
+          echo "✅ Coverage validation passed: ${COVERAGE}% >= 80%"
+          
+      - name: Run ESLint validation
+        run: |
+          echo "🔍 Running ESLint validation..."
+          npm run lint
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ ESLint validation failed!"
+            echo "Please fix all linting errors before deployment."
+            exit 1
+          fi
+          
+          echo "✅ ESLint validation passed - no lint errors found!"
+          
+      - name: Extract project name from angular.json
+        id: project-info
+        run: |
+          PROJECT_NAME=$(node -e "
+            const fs = require('fs');
+            const angular = JSON.parse(fs.readFileSync('angular.json', 'utf8'));
+            const projects = Object.keys(angular.projects);
+            console.log(projects[0]);
+          ")
+          echo "project-name=${PROJECT_NAME}" >> $GITHUB_OUTPUT
+          echo "📦 Detected Angular project: ${PROJECT_NAME}"
+          
+      - name: Build Angular application
+        run: |
+          echo "🔨 Building Angular project for GitHub Pages..."
+          npm run build -- --base-href '/EsLint/'
+          
+          # Verify build output exists
+          if [ ! -d "dist" ]; then
+            echo "❌ Build failed - dist directory not found!"
+            exit 1
+          fi
+          
+          echo "✅ Angular build completed successfully!"
+          
+      - name: Fix SPA routing for GitHub Pages
+        run: |
+          # Copy index.html to 404.html for SPA routing support
+          if [ -f "dist/es-lint/index.html" ]; then
+            cp dist/es-lint/index.html dist/es-lint/404.html
+            echo "✅ Created 404.html for SPA routing support"
+          else
+            echo "❌ index.html not found in build output!"
+            exit 1
+          fi
+          
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist/es-lint'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: Print deployment URL
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "📱 Your Angular app is now live at: ${{ steps.deployment.outputs.page_url }}"
+          echo "🔗 Direct URL: https://aishwaryakulkarni1801.github.io/EsLint/"
