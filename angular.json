@@ -3,7 +3,11 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
+<<<<<<< HEAD
     "EsLint": {
+=======
+    "testingCoverageCheckBeforeDeploy9": {
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +21,11 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
+<<<<<<< HEAD
             "outputPath": "dist/es-lint",
+=======
+            "outputPath": "dist/testing-coverage-check-before-deploy9",
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": [
@@ -65,10 +73,17 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
+<<<<<<< HEAD
               "browserTarget": "EsLint:build:production"
             },
             "development": {
               "browserTarget": "EsLint:build:development"
+=======
+              "browserTarget": "testingCoverageCheckBeforeDeploy9:build:production"
+            },
+            "development": {
+              "browserTarget": "testingCoverageCheckBeforeDeploy9:build:development"
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
             }
           },
           "defaultConfiguration": "development"
@@ -76,7 +91,11 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
+<<<<<<< HEAD
             "browserTarget": "EsLint:build"
+=======
+            "browserTarget": "testingCoverageCheckBeforeDeploy9:build"
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
           }
         },
         "lint": {
@@ -92,6 +111,13 @@
     }
   },
   "cli": {
+<<<<<<< HEAD
     "analytics": "f54601f4-c680-4ce1-8e43-aaa817d53e97"
+=======
+    "analytics": "c4bd9de5-bf0a-42a8-9892-bb9fbfb8f8f5",
+    "schematicCollections": [
+      "angular-eslint"
+    ]
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
   }
 }

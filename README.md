@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # EsLint
+=======
+# TestingCoverageCheckBeforeDeploy9
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.16.
 

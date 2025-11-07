@@ -8,10 +8,19 @@
       "node"
     ],
     "esModuleInterop": true,
+<<<<<<< HEAD
     "allowSyntheticDefaultImports": true
   },
   "include": [
     "src/**/*.spec.ts",
+=======
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
     "src/**/*.d.ts",
     "setup-jest.ts"
   ]

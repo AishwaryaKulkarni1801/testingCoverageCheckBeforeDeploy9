@@ -1,5 +1,11 @@
 import { Component } from '@angular/core';
 
+<<<<<<< HEAD
+=======
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const unusedVariable = 'This will trigger ESLint violation';
+
+>>>>>>> 5d651121e32e06614eb98e125e8daba5e16c886f
 @Component({
   selector: 'app-demo',
   templateUrl: './demo.component.html',
