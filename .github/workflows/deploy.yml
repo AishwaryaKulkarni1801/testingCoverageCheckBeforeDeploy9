@@ -1,0 +1,203 @@
+name: CI/CD Pipeline with Jest Coverage, ESLint Validation & GitHub Pages Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+environment:
+  name: github-pages
+  url: ${{ steps.deployment.outputs.page_url }}
+
+jobs:
+  test-and-validate:
+    name: 🧪 Test & Validate Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          
+      - name: 📦 Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            
+      - name: 📥 Install dependencies
+        run: npm ci
+        
+      - name: 🧪 Run Jest tests with coverage
+        run: npm run test -- --coverage --watchAll=false
+        
+      - name: 📊 Parse coverage report and validate threshold
+        run: |
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE=$(node -p "Math.round(JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json', 'utf8')).total.lines.pct)")
+            echo "📊 Total Coverage: ${COVERAGE}%"
+            
+            if [ "$COVERAGE" -lt 80 ]; then
+              echo "### ❌ Deployment stopped due to low test coverage (<80%)" >> $GITHUB_STEP_SUMMARY
+              echo "🔴 Current coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+              echo "🎯 Required coverage: 80%" >> $GITHUB_STEP_SUMMARY
+              echo "Please improve test coverage before deploying." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            else
+              echo "✅ Coverage threshold met: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Coverage report not found" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+      - name: 🔍 Run ESLint validation
+        run: |
+          echo "🔍 Running ESLint validation..."
+          
+          # Run ESLint and capture output
+          if npm run lint 2>&1 | tee eslint-output.txt; then
+            echo "✅ ESLint validation passed" >> $GITHUB_STEP_SUMMARY
+            
+            # Check if there are warnings
+            if grep -q "warning" eslint-output.txt; then
+              echo "⚠️ ESLint warnings found (but continuing deployment)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ❌ Deployment stopped due to ESLint errors" >> $GITHUB_STEP_SUMMARY
+            echo "🔴 Please fix ESLint errors before deploying." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**ESLint Output:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat eslint-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+      - name: 📄 Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage/
+          retention-days: 30
+
+  build-and-deploy:
+    name: 🚀 Build & Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: test-and-validate
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          
+      - name: 📦 Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            
+      - name: 📥 Install dependencies
+        run: npm ci
+        
+      - name: 🔍 Detect Angular project name
+        id: project-info
+        run: |
+          # Extract project name from angular.json
+          PROJECT_NAME=$(node -p "Object.keys(JSON.parse(require('fs').readFileSync('angular.json', 'utf8')).projects)[0]")
+          echo "Detected Angular project: $PROJECT_NAME"
+          echo "project-name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          
+      - name: 🏗️ Build Angular application
+        run: |
+          echo "🏗️ Building Angular application for GitHub Pages..."
+          npm run build -- --base-href '/EsLint/'
+          
+      - name: 📄 Setup SPA routing (404.html)
+        run: |
+          # Determine the correct dist path
+          if [ -d "dist/es-lint" ]; then
+            DIST_PATH="dist/es-lint"
+          elif [ -d "dist/testing-coverage-check-before-deploy9" ]; then
+            DIST_PATH="dist/testing-coverage-check-before-deploy9"
+          else
+            # Find the first directory in dist/
+            DIST_PATH=$(find dist -maxdepth 1 -type d ! -name dist | head -1)
+          fi
+          
+          echo "Using dist path: $DIST_PATH"
+          
+          if [ -f "$DIST_PATH/index.html" ]; then
+            cp "$DIST_PATH/index.html" "$DIST_PATH/404.html"
+            echo "✅ Created 404.html for SPA routing"
+          else
+            echo "❌ index.html not found in $DIST_PATH"
+            exit 1
+          fi
+          
+          # Store dist path for next step
+          echo "dist-path=$DIST_PATH" >> $GITHUB_ENV
+          
+      - name: ⚙️ Setup GitHub Pages
+        uses: actions/configure-pages@v4
+        
+      - name: 📤 Upload artifact to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.dist-path }}
+          
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify-success:
+    name: 🎉 Deployment Success Notification
+    runs-on: ubuntu-latest
+    needs: [test-and-validate, build-and-deploy]
+    if: success()
+    
+    steps:
+      - name: 🎉 Generate success summary
+        run: |
+          echo "### ✅ Deployment Successful 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **[View Live Site](https://AishwaryaKulkarni1801.github.io/EsLint/)**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🧪 **All tests passed & ESLint validation cleared.**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Deployment Details:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Jest tests: Passed with >80% coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint validation: No errors found" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Angular build: Successful" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GitHub Pages: Deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Your Angular application is now live!**" >> $GITHUB_STEP_SUMMARY
+          
+      - name: 📢 Post deployment info
+        run: |
+          echo "🎊 Deployment completed successfully!"
+          echo "📱 Site URL: https://AishwaryaKulkarni1801.github.io/EsLint/"
+          echo "📝 Check the Actions Summary tab for detailed results."
